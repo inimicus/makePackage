@@ -22,6 +22,7 @@ DEFAULT_COMMIT_BUMP_API="Bumped API to %s"
 
 PROGRAM_USAGE_SHORT="\
 Usage:
+
   $PROGRAM_NAME [options]
   $PROGRAM_NAME bump [(--to | -t) <version>] [--major | --minor | --patch] [options]
   $PROGRAM_NAME bump-api [(--to | -t) <version>] [--squash | -s] [options]
@@ -33,9 +34,23 @@ $PROGRAM_NAME version $PROGRAM_VERSION
 
 $PROGRAM_USAGE_SHORT
 
+Take the contents of an entire addon directory and output a packaged zip file
+that is clean of development, debug, and OS-specific artifacts that is ready
+to be distributed or uploaded to ESOUI.
+
+Reads the directory name and package manifest file for information about the addon,
+including any options to ignore addon-specific files and folders, where to place
+the output package, and more.
+
+For more configuration information, issues, or feature requests, visit:
+
+    https://github.com/inimicus/makePackage/
+
 Options:
+
   --dry-run             Print out commands to execute without executing them.
                         Short: -d
+
   --no-commit           Disables automatic commit.
                         Short: -n
 
@@ -48,11 +63,12 @@ Commands:
   bump        Bump the addon version by one patch and commit the change.
 
               Options:
-              --major   Bumps the major version.
 
-              --minor   Bumps the minor version.
+              --major             Bumps the major version.
 
-              --patch   Bumps the patch version (default).
+              --minor             Bumps the minor version.
+
+              --patch             Bumps the patch version (default).
 
               --to <version>      Explicitly set the addon version to bump to.
                                   When set, options passed to bump the major,
@@ -63,9 +79,10 @@ Commands:
               found in the manifest file, each will be incremented by one.
 
               Options:
-              --squash  If multiple API versions are encountered, bump
-                        the most recent version and remove the rest.
-                        Short: -s
+
+              --squash            If multiple API versions are encountered, bump
+                                  the most recent version and remove the rest.
+                                  Short: -s
 
               --to <version>      Explicitly set the API version to bump to.
                                   Short: -t
