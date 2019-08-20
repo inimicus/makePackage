@@ -19,6 +19,7 @@ DEFAULT_RELEASE_DIR="release"
 DEFAULT_COMMIT="Added packaged version %s"
 DEFAULT_COMMIT_BUMP="Bumped to version %s"
 DEFAULT_COMMIT_BUMP_API="Bumped API to %s"
+BUMP_TYPE="patch"
 
 PROGRAM_USAGE_SHORT="\
 Usage:
@@ -163,12 +164,45 @@ function get_manifest_bump_files() {
 }
 
 function get_addon_next_version() {
-    local addonVersion
-    addonVersion=$(get_addon_version)
+    local addonVersion pattern major minor type patch
 
-    # Bumps patch number
-    # e.g. 1.0.0 -> 1.0.1
-    echo "1.2.3.4"
+    addonVersion=$(get_manifest_version)
+    pattern="^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(\\.| r)(0|[1-9][0-9]*)$"
+
+    # TODO: Only do this if the next addon version is not explicitly set
+    if [[ "$addonVersion" =~ $pattern ]]; then
+        major=${BASH_REMATCH[1]}
+        minor=${BASH_REMATCH[2]}
+        type=${BASH_REMATCH[3]}
+        patch=${BASH_REMATCH[4]}
+
+        if [[ $BUMP_TYPE = "patch" ]]; then
+            patch="$((patch + 1))"
+        fi
+
+        if [[ $BUMP_TYPE = "minor" ]]; then
+            minor="$((minor + 1))"
+            patch=0
+        fi
+
+        if [[ $BUMP_TYPE = "major" ]]; then
+            major="$((major + 1))"
+            minor=0
+            patch=0
+        fi
+
+        if [[ $type = "." ]]; then
+            echo "$major.$minor.$patch"
+        else
+            if [[ $patch = "0" ]]; then
+                patch=1
+            fi
+            echo "$major.$minor r$patch"
+        fi
+
+    else
+        error "Version $addonVersion is not a compatible version format (X.Y.Z or X.Y rZ)"
+    fi
 }
 
 function get_addon_name() {
@@ -261,7 +295,24 @@ function package_execute() {
 }
 
 function bump_execute() {
-    echo "Bumping Addon Version"
+    local currentVersion nextVersion
+
+    currentVersion="$(get_manifest_version)"
+    nextVersion="$(get_addon_next_version)"
+
+    # TODO: Handle updating manifest AddOnVersion value.
+    #       Initially was planning to convert 1.0.0 => 100, 2.9.3 => 293,
+    #       however this approach has flaws:
+    #
+    #       When using SemVer, version order will break when patch > 9:
+    #         1.0.10 = 1010 > 1.1.0 = 110
+    #         1.3.22 = 1322 > 2.0.0 = 200
+    #
+    #       Instead, consider zero padding so that:
+    #         1.0.10 = 10010 < 1.1.0 = 10100
+    #         1.3.22 = 10322 < 2.0.0 = 20000
+
+    echo "Bumping addon version: $currentVersion => $nextVersion"
 }
 
 function bump_api_execute() {
