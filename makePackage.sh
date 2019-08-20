@@ -222,7 +222,11 @@ function get_manifest_file() {
 }
 
 function get_manifest_config() {
+    # TODO: Warn about bad/game crashing characters in manifest file?
+    #       i.e. CRLF, colon (:)
+
     local config manifest
+
     manifest=$(get_manifest_file) || exit 1
     config=$(grep "${1}" "${manifest}" | sed 's/.*: //')
     echo "${config}"
