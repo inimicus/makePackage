@@ -19,7 +19,6 @@ DEFAULT_RELEASE_DIR="release"
 DEFAULT_COMMIT="Added packaged version %s"
 DEFAULT_COMMIT_BUMP="Bumped to version %s"
 DEFAULT_COMMIT_BUMP_API="Bumped API to %s"
-BUMP_TYPE="patch"
 
 PROGRAM_USAGE_SHORT="\
 Usage:
@@ -164,7 +163,7 @@ function get_manifest_bump_files() {
 }
 
 function get_addon_next_version() {
-    local addonVersion pattern major minor type patch
+    local addonVersion pattern major minor type patch newVersion
 
     addonVersion=$(get_manifest_version)
     pattern="^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(\\.| r)(0|[1-9][0-9]*)$"
@@ -176,32 +175,39 @@ function get_addon_next_version() {
         type=${BASH_REMATCH[3]}
         patch=${BASH_REMATCH[4]}
 
-        if [[ $BUMP_TYPE = "patch" ]]; then
-            patch="$((patch + 1))"
-        fi
-
-        if [[ $BUMP_TYPE = "minor" ]]; then
-            minor="$((minor + 1))"
-            patch=0
-        fi
-
-        if [[ $BUMP_TYPE = "major" ]]; then
-            major="$((major + 1))"
-            minor=0
-            patch=0
-        fi
+        case "${BUMP_TYPE:-patch}" in
+            major)
+                major="$((major + 1))"
+                minor=0
+                patch=0
+                ;;
+            minor)
+                minor="$((minor + 1))"
+                patch=0
+                ;;
+            patch)
+                patch="$((patch + 1))"
+                ;;
+            *)
+                error_usage "Invalid bump option: $BUMP_TYPE"
+                exit 2
+                ;;
+        esac
 
         if [[ $type = "." ]]; then
-            echo "$major.$minor.$patch"
+            newVersion="$major.$minor.$patch"
         else
             if [[ $patch = "0" ]]; then
                 patch=1
             fi
-            echo "$major.$minor r$patch"
+            newVersion="$major.$minor r$patch"
         fi
+
+        echo "$newVersion"
 
     else
         error "Version $addonVersion is not a compatible version format (X.Y.Z or X.Y rZ)"
+        exit 1
     fi
 }
 
