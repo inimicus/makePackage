@@ -295,10 +295,13 @@ function package_execute() {
     if [[ ${DO_DRY_RUN:-false} == true ]]; then
         echo "Dry Run Creating: ${packageName}"
         echo "$packageCommand"
+        # TODO: Dry run commit command
     else
         echo "Creating: ${packageName}"
         cd ..
         ($packageCommand)
+        cd "$addonPath"
+        # TODO: Commit package
         echo "Done!"
     fi
 
@@ -308,7 +311,7 @@ function bump_execute() {
     local currentVersion nextVersion
 
     currentVersion="$(get_manifest_version)"
-    nextVersion="$(get_addon_next_version)"
+    nextVersion="$(get_addon_next_version)" || exit 1
 
     # TODO: Handle updating manifest AddOnVersion value.
     #       Initially was planning to convert 1.0.0 => 100, 2.9.3 => 293,
@@ -391,7 +394,8 @@ function get_package_options() {
                         fi
                         ;;
                     *)
-                        error "Unrecognized option provided: --${OPTARG}"
+                        error_usage "Unrecognized option provided: --${OPTARG}"
+                        exit 2
                         ;;
                 esac;;
             d)
