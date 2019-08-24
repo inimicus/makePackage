@@ -166,7 +166,7 @@ function get_manifest_bump_files() {
 function get_addon_next_version() {
     local addonVersion pattern major minor type patch newVersion
 
-    addonVersion=$(get_manifest_version)
+    addonVersion=$(get_manifest_version) || exit 1
     pattern="^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(\\.| r)(0|[1-9][0-9]*)$"
 
     # TODO: Only do this if the next addon version is not explicitly set
@@ -191,7 +191,6 @@ function get_addon_next_version() {
                 ;;
             *)
                 error_usage "Invalid bump option: $BUMP_TYPE"
-                exit 2
                 ;;
         esac
 
@@ -229,11 +228,11 @@ function get_manifest_file() {
 }
 
 function get_manifest_option() {
-    get_manifest_value "; $1"
+    get_manifest_value "; $1" || exit 1
 }
 
 function get_manifest_variable() {
-    get_manifest_value "## $1"
+    get_manifest_value "## $1" || exit 1
 }
 
 function get_manifest_value() {
@@ -433,7 +432,6 @@ function get_package_options() {
                         ;;
                 esac;;
             d)
-                echo "Dry run"
                 DO_DRY_RUN=true
                 ;;
             m)
