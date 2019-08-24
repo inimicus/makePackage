@@ -21,6 +21,7 @@ DEFAULT_RELEASE_DIR="release"
 DEFAULT_COMMIT="Added packaged version %s"
 DEFAULT_COMMIT_BUMP="Bumped to version %s"
 DEFAULT_COMMIT_BUMP_API="Bumped API to %s"
+DEFAULT_COMMIT_BODY="Automatically committed via ${PROGRAM_NAME} v${PROGRAM_VERSION}"
 
 PROGRAM_USAGE_SHORT="\
 Usage:
