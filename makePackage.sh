@@ -328,20 +328,24 @@ function package_execute() {
     done
 
     # Create package command
-    packageCommand="zip -DqrX ${packageOutput} ${addonDir} -x ${excludeAll}"
+    packageCmd="zip -DqrX ${packageOutput} ${addonDir} -x ${excludeAll}"
 
     # Execute or print command when performing a dry run
     if [[ ${DO_DRY_RUN:-false} == true ]]; then
         echo "Dry Run Creating: ${packageName}"
-        echo "$packageCommand"
+        echo "$packageCmd"
         # TODO: Dry run commit command
     else
-        echo "Creating: ${packageName}"
+        echo -n "Creating: ${packageName}..."
         cd ..
-        ($packageCommand)
-        cd "$addonPath"
-        # TODO: Commit package
-        echo "Done!"
+        package="$(eval "${packageCmd}")"
+        if [[ $package -eq 0 ]]; then
+            echo "Done!"
+            cd "$addonPath"
+            # TODO: Commit package
+        else
+            error "Error!\nError occurred while creating the package."
+        fi
     fi
 
 }
