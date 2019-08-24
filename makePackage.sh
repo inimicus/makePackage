@@ -122,6 +122,7 @@ function error() {
 
 function error_usage() {
     echo -e "$1\n\nUse '${PROGRAM_NAME} --help' for more information." 1>&2
+    exit 2
 }
 
 function usage() {
@@ -356,7 +357,6 @@ function get_package_options() {
                     major|minor|patch)
                         if [[ ! $command == "bump" ]]; then
                             error_usage "The options for --major, --minor, and --patch have no effect in this command mode."
-                            exit 2
                         fi
 
                         BUMP_TYPE="${OPTARG}"
@@ -366,7 +366,6 @@ function get_package_options() {
                             COMMIT_MESSAGE="${!OPTIND}"; OPTIND=$((OPTIND + 1))
                         else
                             error_usage "Option --message requires a commit message."
-                            exit 2
                         fi
                         ;;
                     no-commit)
@@ -375,7 +374,6 @@ function get_package_options() {
                     squash)
                         if [[ ! $command == "bump-api" ]]; then
                             error_usage "The option for squashing API version have no effect in this command mode."
-                            exit 2
                         fi
 
                         DO_SQUASH=false
@@ -383,19 +381,16 @@ function get_package_options() {
                     to)
                         if [[ $command == "package" ]]; then
                             error_usage "The option to set a version to bump to has no effect in this command mode."
-                            exit 2
                         fi
 
                         if [[ -n ${!OPTIND+x} ]] && [[ ! ${!OPTIND:0:1} == "-" ]]; then
                             ADDON_NEXT_VERSION="${!OPTIND}"; OPTIND=$((OPTIND + 1))
                         else
                             error_usage "Option --to requires a version."
-                            exit 2
                         fi
                         ;;
                     *)
                         error_usage "Unrecognized option provided: --${OPTARG}"
-                        exit 2
                         ;;
                 esac;;
             d)
@@ -407,7 +402,6 @@ function get_package_options() {
                     COMMIT_MESSAGE="${OPTARG}";
                 else
                     error_usage "Option -m requires a valid commit message."
-                    exit 2
                 fi
                 ;;
             n)
@@ -415,8 +409,7 @@ function get_package_options() {
                 ;;
             s)
                 if [[ ! $command == "bump-api" ]]; then
-                    error_usage "The option for squashing API version have no effect in this command mode."
-                    exit 2
+                    error_usage "The option for squashing API version has no effect in this command mode."
                 fi
 
                 DO_SQUASH=false
@@ -424,23 +417,19 @@ function get_package_options() {
             t)
                 if [[ $command == "package" ]]; then
                     error_usage "The option to set a version to bump to has no effect in this command mode."
-                    exit 2
                 fi
 
                 if [[ ! ${!OPTARG:0:1} == "-" ]]; then
                     ADDON_NEXT_VERSION="${OPTARG}";
                 else
                     error_usage "Option -t requires a version."
-                    exit 2
                 fi
                 ;;
             :)
                 error_usage "Option -${OPTARG} requires a value."
-                exit 2
                 ;;
             \?)
                 error_usage "Unrecognized option provided: -${OPTARG}"
-                exit 2
                 ;;
         esac
     done
