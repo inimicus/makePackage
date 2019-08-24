@@ -144,23 +144,23 @@ function get_addon_path() {
 }
 
 function get_manifest_addon_version() {
-    get_manifest_config "## AddOnVersion"
+    get_manifest_variable "AddOnVersion"
 }
 
 function get_manifest_version() {
-    get_manifest_config "## Version"
+    get_manifest_variable "Version"
 }
 
 function get_manifest_excludes() {
-    get_manifest_config "; PackageExcludes"
+    get_manifest_option "PackageExcludes"
 }
 
 function get_manifest_release_dir() {
-    get_manifest_config "; PackageReleaseDir"
+    get_manifest_option "PackageReleaseDir"
 }
 
 function get_manifest_bump_files() {
-    get_manifest_config "; PackageBumpFiles"
+    get_manifest_option "PackageBumpFiles"
 }
 
 function get_addon_next_version() {
@@ -228,7 +228,15 @@ function get_manifest_file() {
     fi
 }
 
-function get_manifest_config() {
+function get_manifest_option() {
+    get_manifest_value "; $1"
+}
+
+function get_manifest_variable() {
+    get_manifest_value "## $1"
+}
+
+function get_manifest_value() {
     # TODO: Warn about bad/game crashing characters in manifest file?
     #       i.e. CRLF, colon (:)
 
