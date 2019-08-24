@@ -15,6 +15,8 @@ set -o nounset
 PROGRAM_NAME="$(basename -- "$0")"
 PROGRAM_VERSION="1.0.0"
 
+VERSION_PATTERN="^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(\\.| r)(0|[1-9][0-9]*)$"
+
 DEFAULT_RELEASE_DIR="release"
 DEFAULT_COMMIT="Added packaged version %s"
 DEFAULT_COMMIT_BUMP="Bumped to version %s"
@@ -163,51 +165,89 @@ function get_manifest_bump_files() {
     get_manifest_option "PackageBumpFiles"
 }
 
-function get_addon_next_version() {
-    local addonVersion pattern major minor type patch newVersion
+function generate_next_version() {
+    local addonVersion major minor type patch nextVersion
 
-    addonVersion=$(get_manifest_version) || exit 1
-    pattern="^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(\\.| r)(0|[1-9][0-9]*)$"
+    addonVersion="$1"
 
-    # TODO: Only do this if the next addon version is not explicitly set
-    if [[ "$addonVersion" =~ $pattern ]]; then
+    # Use explicit next version if it has been passed
+    # Otherwise generate the next version based on the current version
+    if [ -z ${ADDON_NEXT_VERSION+x} ]; then
+
+        if [[ "$addonVersion" =~ $VERSION_PATTERN ]]; then
+            major=${BASH_REMATCH[1]}
+            minor=${BASH_REMATCH[2]}
+            type=${BASH_REMATCH[3]}
+            patch=${BASH_REMATCH[4]}
+
+            case "${BUMP_TYPE:-patch}" in
+                major)
+                    major="$((major + 1))"
+                    minor=0
+                    patch=0
+                    ;;
+                minor)
+                    minor="$((minor + 1))"
+                    patch=0
+                    ;;
+                patch)
+                    patch="$((patch + 1))"
+                    ;;
+                *)
+                    error_usage "Invalid bump option: ${BUMP_TYPE}"
+                    ;;
+            esac
+
+            if [[ $type = "." ]]; then
+                nextVersion="${major}.${minor}.${patch}"
+            else
+                if [[ $patch = "0" ]]; then
+                    patch=1
+                fi
+                nextVersion="${major}.${minor} r${patch}"
+            fi
+
+        else
+            error "Current version $addonVersion is not a compatible version format (X.Y.Z or X.Y rZ)"
+        fi
+    else
+        nextVersion="${ADDON_NEXT_VERSION}"
+    fi
+
+    # Confirm passed or generated next version is valid
+    if [[ "$nextVersion" =~ $VERSION_PATTERN ]]; then
+        echo "$nextVersion"
+    else
+        error "Next version $nextVersion is not a compatible version format (X.Y.Z or X.Y rZ)"
+    fi
+}
+
+function generate_next_add_on_version() {
+    local version major minor type patch nextVersion
+
+    version="$1"
+
+    if [[ $version =~ $VERSION_PATTERN ]]; then
         major=${BASH_REMATCH[1]}
         minor=${BASH_REMATCH[2]}
         type=${BASH_REMATCH[3]}
         patch=${BASH_REMATCH[4]}
 
-        case "${BUMP_TYPE:-patch}" in
-            major)
-                major="$((major + 1))"
-                minor=0
-                patch=0
-                ;;
-            minor)
-                minor="$((minor + 1))"
-                patch=0
-                ;;
-            patch)
-                patch="$((patch + 1))"
-                ;;
-            *)
-                error_usage "Invalid bump option: $BUMP_TYPE"
-                ;;
-        esac
-
-        if [[ $type = "." ]]; then
-            newVersion="$major.$minor.$patch"
-        else
-            if [[ $patch = "0" ]]; then
-                patch=1
-            fi
-            newVersion="$major.$minor r$patch"
+        # Do not process large version parts
+        if [[ $major -gt 99 ]] || [[ $minor -gt 99  ]] || [[ $patch -gt 99  ]]; then
+            error "Version major, minor, or patch values greater than 99 are not supported."
         fi
 
-        echo "$newVersion"
+        if [[ $type = "." ]]; then
+            nextVersion=$(printf "%d%02d%02d" "${major}" "${minor}" "${patch}")
+        else
+            nextVersion="${patch}"
+        fi
+
+        echo "$nextVersion"
 
     else
-        error "Version $addonVersion is not a compatible version format (X.Y.Z or X.Y rZ)"
-        exit 1
+        error "Version reference to generate AddOnVersion $version is not a compatible version format (X.Y.Z or X.Y rZ)"
     fi
 }
 
