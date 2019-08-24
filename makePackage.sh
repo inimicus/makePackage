@@ -392,24 +392,81 @@ function package_execute() {
 }
 
 function bump_execute() {
-    local currentVersion nextVersion
+    local currentVersion nextVersion currentAddOnVersion nextAddOnVersion tempDir\
+        tempManifest
 
-    currentVersion="$(get_manifest_version)"
-    nextVersion="$(get_addon_next_version)" || exit 1
+    currentVersion="$(get_manifest_version)" || exit 1
+    nextVersion="$(generate_next_version "${currentVersion}")" || exit 1
+    currentAddOnVersion="$(get_manifest_addon_version)" || exit 1
+    nextAddOnVersion="$(generate_next_add_on_version "${nextVersion}")" || exit 1
 
-    # TODO: Handle updating manifest AddOnVersion value.
-    #       Initially was planning to convert 1.0.0 => 100, 2.9.3 => 293,
-    #       however this approach has flaws:
-    #
-    #       When using SemVer, version order will break when patch > 9:
-    #         1.0.10 = 1010 > 1.1.0 = 110
-    #         1.3.22 = 1322 > 2.0.0 = 200
-    #
-    #       Instead, consider zero padding so that:
-    #         1.0.10 = 10010 < 1.1.0 = 10100
-    #         1.3.22 = 10322 < 2.0.0 = 20000
+    tempDir="${TMPDIR-/tmp/}"
+    manifestPath="$(get_manifest_file)" || exit 1
+    manifestName="$(basename -- "${manifestPath}")"
 
-    echo "Bumping addon version: $currentVersion => $nextVersion"
+    if [[ -d $tempDir ]]; then
+
+        tempManifest="${tempDir}${manifestName}"
+        man_copyCmd="cp ${manifestPath} ${tempManifest}"
+        # TODO: Ensure portability of sed (-i '' is a macOS sed convention)
+        man_replaceVersionCmd="sed -i '' -e 's/${currentVersion}/${nextVersion}/g' ${tempManifest}"
+        man_replaceAddOnVersionCmd="sed -i '' -e 's/${currentAddOnVersion}/${nextAddOnVersion}/g' ${tempManifest}"
+        man_moveCmd="mv ${tempManifest} ${manifestPath}"
+
+        if [[ ${DO_DRY_RUN:-false} == true ]]; then
+            echo "${man_copyCmd}"
+            echo "${man_replaceVersionCmd}"
+            echo "${man_replaceAddOnVersionCmd}"
+            echo "${man_moveCmd}"
+        else
+            echo -n "Copying manifest to temp file... "
+            man_copy="$(eval "${man_copyCmd}")"
+
+            # Update Manifest
+            if [[ $man_copy -eq 0 ]]; then
+                if [[ -w $tempManifest ]]; then
+                    echo "Done!"
+
+                    # Replace Version
+                    echo -n "Bumping manifest Version $currentVersion => $nextVersion... "
+                    man_replaceVersion="$(eval "${man_replaceVersionCmd}")"
+                    if [[ $man_replaceVersion -eq 0 ]]; then
+                        echo "Done!"
+                    else
+                        error "Error!\nError occurred while updating the manifest Version."
+                    fi
+
+                    # Replace AddOnVersion
+                    echo -n "Bumping manifest AddOnVersion $currentAddOnVersion => $nextAddOnVersion... "
+                    man_replaceAddOnVersion="$(eval "${man_replaceAddOnVersionCmd}")"
+                    if [[ $man_replaceAddOnVersion -eq 0 ]]; then
+                        echo "Done!"
+                    else
+                        error "Error!\nError occurred while updating the manifest AddOnVersion."
+                    fi
+
+                    # Move updated manifest back
+                    echo -n "Moving temporary manifest into place... "
+                    man_move="$(eval "${man_moveCmd}")"
+                    if [[ $man_move -eq 0 ]]; then
+                        echo "Done!"
+                    else
+                        error "Error!\nError occurred while moving the updated manifest file."
+                    fi
+                else
+                    error "Error!\nTemporary manifest file is not writable: ${tempManifest}"
+                fi
+            else
+                error "Error!\nFailed copying manifest file."
+            fi
+
+            # Update Source Files
+            # TODO: Update them
+        fi
+
+    else
+        error "Temporary directory does not exist: ${tempDir}"
+    fi
 }
 
 function bump_api_execute() {
