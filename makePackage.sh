@@ -384,7 +384,7 @@ function get_package_options() {
                             error_usage "The option for squashing API version have no effect in this command mode."
                         fi
 
-                        DO_SQUASH=false
+                        DO_SQUASH=true
                         ;;
                     to)
                         if [[ $command == "package" ]]; then
@@ -420,7 +420,7 @@ function get_package_options() {
                     error_usage "The option for squashing API version has no effect in this command mode."
                 fi
 
-                DO_SQUASH=false
+                DO_SQUASH=true
                 ;;
             t)
                 if [[ $command == "package" ]]; then
