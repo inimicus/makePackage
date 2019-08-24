@@ -237,14 +237,45 @@ function get_manifest_variable() {
 }
 
 function get_manifest_value() {
-    # TODO: Warn about bad/game crashing characters in manifest file?
-    #       i.e. CRLF, colon (:)
-
     local config manifest
 
-    manifest=$(get_manifest_file) || exit 1
+    manifest=$(validate_manifest_file) || exit 1
+
     config=$(grep "${1}" "${manifest}" | sed 's/.*: //')
     echo "${config}"
+}
+
+function validate_manifest_file() {
+    local manifest hasCRLF
+    manifest=$(get_manifest_file) || exit 1
+
+    # Detect CRLF
+    hasCRLF=$(grep -Ul "" "${manifest}")
+
+    if [[ -n "$hasCRLF" ]]; then
+        error "Bad line ending detected! Check the manifest file and try again."
+    fi
+
+    # Detect starting with colon (:)
+    hasColon=$(grep -Ul -E "^:" "$manifest")
+
+    if [[ -n "$hasColon" ]]; then
+        error "Colon at start of line detected! Check the manifest file and try again."
+    fi
+
+    echo "$manifest"
+}
+
+function validate_addon_name() {
+    local addonDir addonTitle
+    addonDir=$(get_addon_name) || exit 1
+    addonTitle=$(get_manifest_variable "Title") || exit 1
+
+    if [[ $addonDir != "$addonTitle" ]]; then
+        error "Directory name does not match addon manifest Title value."
+    else
+        echo "$addonTitle"
+    fi
 }
 
 # Action Functions ------------------------------------------------------------
@@ -256,7 +287,7 @@ function package_execute() {
     # Get variables we need
     addonPath=$(get_addon_path) || exit 1
     addonDir=$(basename "${addonPath}")
-    addonName=$(get_addon_name)
+    addonName=$(validate_addon_name)
     addonVersion=$(get_manifest_version) || exit 1
     excludeFiles=$(get_manifest_excludes) || exit 1
     releaseDir=$(get_manifest_release_dir) || exit 1
