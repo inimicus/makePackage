@@ -528,6 +528,23 @@ function bump_execute() {
 
 function bump_api_execute() {
     echo "Bumping API Version"
+    # TODO: Implement this
+}
+
+function echo_verbose() {
+    if [[ ${BE_VERBOSE:-false} == true ]]; then
+        echo -e "${1}" >&2
+    fi
+}
+
+function cmd_execute() {
+    if [[ ${DO_DRY_RUN:-false} == true ]]; then
+        echo 0
+        echo -e "Command: ${1}" >&2
+    else
+        cmd="$(eval "$1" &> /dev/null)"
+        echo "${cmd}"
+    fi
 }
 
 # Options ---------------------------------------------------------------------
@@ -544,7 +561,7 @@ function get_package_options() {
     fi
 
     # Get options
-    while getopts ":dm:nst:-:" o; do
+    while getopts ":dm:npst:-:" o; do
         case "${o}" in
             -)
                 case "${OPTARG}" in
@@ -567,6 +584,9 @@ function get_package_options() {
                         ;;
                     no-commit)
                         DO_COMMIT=false
+                        ;;
+                    verbose)
+                        BE_VERBOSE=true
                         ;;
                     squash)
                         if [[ ! $command == "bump-api" ]]; then
@@ -602,6 +622,9 @@ function get_package_options() {
                 ;;
             n)
                 DO_COMMIT=false
+                ;;
+            p)
+                BE_VERBOSE=true
                 ;;
             s)
                 if [[ ! $command == "bump-api" ]]; then
