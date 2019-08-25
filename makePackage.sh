@@ -181,7 +181,7 @@ function generate_next_version() {
 
     # Use explicit next version if it has been passed
     # Otherwise generate the next version based on the current version
-    if [ -z ${ADDON_NEXT_VERSION+x} ]; then
+    if [[ -z ${ADDON_NEXT_VERSION+x} ]]; then
 
         if [[ "$addonVersion" =~ $VERSION_PATTERN ]]; then
             major=${BASH_REMATCH[1]}
@@ -358,7 +358,7 @@ function package_execute() {
     # Get variables we need
     addonPath=$(get_addon_path) || exit 1
     addonDir=$(basename "${addonPath}")
-    addonName=$(validate_addon_name)
+    addonName=$(validate_addon_name) || exit 1
     addonVersion=$(get_manifest_version) || exit 1
     excludeFiles=$(get_manifest_excludes) || exit 1
     releaseDir=$(get_manifest_release_dir) || exit 1
@@ -404,8 +404,7 @@ function package_execute() {
     packageCmd="zip -DqrX ${packageOutput} ${addonDir} -x ${excludeAll}"
 
     echo "Creating package:"
-    echo "  Name: ${packageName}"
-    echo "  Into: ${releaseDir}"
+    echo "  Package: ${packageFile}"
 
     cd ..
     package="$(cmd_execute "${packageCmd}")"
@@ -442,7 +441,7 @@ function bump_execute() {
         manifestPath manifestName\
         tempDir tempManifest\
         man_copy man_insertAddOnVersion man_replaceAddOnVersion man_replaceVersion man_move\
-        src_file src_files src_copy src_replaceVersion src_move 
+        src_file src_files src_copy src_replaceVersion src_move
 
     currentVersion="$(get_manifest_version)" || exit 1
     nextVersion="$(generate_next_version "${currentVersion}")" || exit 1
@@ -450,7 +449,7 @@ function bump_execute() {
     nextAddOnVersion="$(generate_next_add_on_version "${nextVersion}")" || exit 1
 
     echo "Bumping version:"
-    echo "  Version:      ${currentVersion} => ${nextVersion}"
+    echo "  Version: ${currentVersion} => ${nextVersion}"
     echo "  AddOnVersion: ${currentAddOnVersion} => ${nextAddOnVersion}"
 
     tempDir="${TMPDIR-/tmp/}"
@@ -526,7 +525,7 @@ function bump_execute() {
                     error "Error!\nError occurred while moving the updated file ${src_file}."
                 fi
 
-                if [[ ! ${DO_COMMIT:-true} == false ]]; then
+                if [[ ${DO_COMMIT:-true} == true ]]; then
                     # Stage updated files for commit
                     src_gitAdd="$(cmd_execute "git add ${src_file}")"
                     if [[ ! $src_gitAdd -eq 0 ]]; then
@@ -538,16 +537,8 @@ function bump_execute() {
             fi
         done
 
-        if [[ ! ${DO_COMMIT:-true} == false ]]; then
-            # shellcheck disable=SC2059
-            printf -v COMMIT_MESSAGE "${COMMIT_MESSAGE:-${DEFAULT_COMMIT_BUMP}}" "${nextVersion}"
-            echo "Committing Change:"
-            echo "  Message:      ${COMMIT_MESSAGE}"
-
-            gitCommit="$(cmd_execute "git commit -m \"${COMMIT_MESSAGE}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
-            if [[ ! $gitCommit -eq 0 ]]; then
-                error "Error!\nCould not commit changes."
-            fi
+        if [[ ${DO_COMMIT:-true} == true ]]; then
+            execute_commit "${DEFAULT_COMMIT_BUMP}" "${nextVersion}" || exit 1
         fi
 
         echo "Complete!"
@@ -744,7 +735,7 @@ function get_package_options() {
     shift $((OPTIND - 1))
 }
 
-if [ "$#" -gt 0 ]; then
+if [[ "$#" -gt 0 ]]; then
     case "$1" in
         bump)
             get_package_options "$@"
