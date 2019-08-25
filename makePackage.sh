@@ -407,13 +407,20 @@ function package_execute() {
 }
 
 function bump_execute() {
-    local currentVersion nextVersion currentAddOnVersion nextAddOnVersion tempDir\
-        tempManifest
+    local currentVersion nextVersion currentAddOnVersion nextAddOnVersion\
+        manifestPath manifestName\
+        tempDir tempManifest\
+        man_copy man_insertAddOnVersion man_replaceAddOnVersion man_replaceVersion man_move\
+        src_file src_files src_copy src_replaceVersion src_move 
 
     currentVersion="$(get_manifest_version)" || exit 1
     nextVersion="$(generate_next_version "${currentVersion}")" || exit 1
     currentAddOnVersion="$(get_manifest_addon_version)" || exit 1
     nextAddOnVersion="$(generate_next_add_on_version "${nextVersion}")" || exit 1
+
+    echo "Bumping version:"
+    echo "  Version:      ${currentVersion} => ${nextVersion}"
+    echo "  AddOnVersion: ${currentAddOnVersion} => ${nextAddOnVersion}"
 
     tempDir="${TMPDIR-/tmp/}"
     manifestPath="$(get_manifest_file)" || exit 1
@@ -421,63 +428,98 @@ function bump_execute() {
 
     if [[ -d $tempDir ]]; then
 
+        # Manifest commands
         tempManifest="${tempDir}${manifestName}"
-        man_copyCmd="cp ${manifestPath} ${tempManifest}"
-        # TODO: Ensure portability of sed (-i '' is a macOS sed convention)
-        man_replaceVersionCmd="sed -i '' -e 's/${currentVersion}/${nextVersion}/g' ${tempManifest}"
-        man_replaceAddOnVersionCmd="sed -i '' -e 's/${currentAddOnVersion}/${nextAddOnVersion}/g' ${tempManifest}"
-        man_moveCmd="mv ${tempManifest} ${manifestPath}"
 
-        if [[ ${DO_DRY_RUN:-false} == true ]]; then
-            echo "${man_copyCmd}"
-            echo "${man_replaceVersionCmd}"
-            echo "${man_replaceAddOnVersionCmd}"
-            echo "${man_moveCmd}"
-        else
-            echo -n "Copying manifest to temp file... "
-            man_copy="$(eval "${man_copyCmd}")"
+        echo_verbose "Copying manifest to temp file"
+        man_copy="$(cmd_execute "cp ${manifestPath} ${tempManifest}")"
 
-            # Update Manifest
-            if [[ $man_copy -eq 0 ]]; then
-                if [[ -w $tempManifest ]]; then
-                    echo "Done!"
+        # Update Manifest
+        if [[ ${man_copy} -eq 0 ]]; then
 
-                    # Replace Version
-                    echo -n "Bumping manifest Version $currentVersion => $nextVersion... "
-                    man_replaceVersion="$(eval "${man_replaceVersionCmd}")"
-                    if [[ $man_replaceVersion -eq 0 ]]; then
-                        echo "Done!"
-                    else
-                        error "Error!\nError occurred while updating the manifest Version."
-                    fi
-
-                    # Replace AddOnVersion
-                    echo -n "Bumping manifest AddOnVersion $currentAddOnVersion => $nextAddOnVersion... "
-                    man_replaceAddOnVersion="$(eval "${man_replaceAddOnVersionCmd}")"
-                    if [[ $man_replaceAddOnVersion -eq 0 ]]; then
-                        echo "Done!"
-                    else
-                        error "Error!\nError occurred while updating the manifest AddOnVersion."
-                    fi
-
-                    # Move updated manifest back
-                    echo -n "Moving temporary manifest into place... "
-                    man_move="$(eval "${man_moveCmd}")"
-                    if [[ $man_move -eq 0 ]]; then
-                        echo "Done!"
-                    else
-                        error "Error!\nError occurred while moving the updated manifest file."
-                    fi
-                else
-                    error "Error!\nTemporary manifest file is not writable: ${tempManifest}"
+            # Handle AddOnVersion
+            if [[ -z ${currentAddOnVersion} ]]; then
+                # Add AddOnVersion if it's empty after ## Version line
+                echo_verbose "Inserting manifest AddOnVersion $nextAddOnVersion"
+                man_insertAddOnVersion="$(cmd_execute "awk '/## Version/ { print; print \"## AddOnVersion: ${nextAddOnVersion}\"; next }1' ${manifestPath} > ${tempManifest}")"
+                if [[ ! $man_insertAddOnVersion -eq 0 ]]; then
+                    error "Error!\nError occurred while inserting the manifest AddOnVersion."
                 fi
             else
-                error "Error!\nFailed copying manifest file."
+                # Replace AddOnVersion
+                echo_verbose "Bumping manifest AddOnVersion $currentAddOnVersion => $nextAddOnVersion"
+                man_replaceAddOnVersion="$(cmd_execute "sed -i -e 's/${currentAddOnVersion}/${nextAddOnVersion}/g' ${tempManifest}")"
+                if [[ ! $man_replaceAddOnVersion -eq 0 ]]; then
+                    error "Error!\nError occurred while updating the manifest AddOnVersion."
+                fi
             fi
 
-            # Update Source Files
-            # TODO: Update them
+            # Handle Version
+            echo_verbose "Bumping manifest Version $currentVersion => $nextVersion"
+            man_replaceVersion="$(cmd_execute "sed -i -e 's/${currentVersion}/${nextVersion}/g' ${tempManifest}")"
+            if [[ ! $man_replaceVersion -eq 0 ]]; then
+                error "Error!\nError occurred while updating the manifest Version."
+            fi
+
+            # Move updated manifest back
+            echo_verbose "Moving temporary manifest into place"
+            man_move="$(cmd_execute "mv ${tempManifest} ${manifestPath}")"
+            if [[ ! $man_move -eq 0 ]]; then
+                error "Error!\nError occurred while moving the updated manifest file."
+            fi
+        else
+            error "Error!\nFailed copying manifest file."
         fi
+
+        # Update Source Files
+        read -r -a src_files <<< "$(get_manifest_bump_files)"
+
+        for src_file in "${src_files[@]}"
+        do
+            src_tempPath="${tempDir}$(basename -- "${src_file}")"
+            echo_verbose "Copying ${src_file} to temp file"
+            src_copy="$(cmd_execute "cp ${src_file} ${src_tempPath}")"
+            if [[ $src_copy -eq 0 ]]; then
+
+                # Update version
+                echo_verbose "Updating ${src_file} version number"
+                src_replaceVersion="$(cmd_execute "sed -i -e \"s/\([\\\"\']\)${currentVersion}\([\\\"\']\)/\1${nextVersion}\2/g\" ${src_tempPath}")"
+                if [[ ! $src_replaceVersion -eq 0 ]]; then
+                    error "Error!\nError occurred while updating the version in ${src_file}."
+                fi
+
+                # Move updated file back
+                echo_verbose "Moving temporary file back to ${src_file}"
+                src_move="$(cmd_execute "mv ${src_tempPath} ${src_file}")"
+                if [[ ! $src_move -eq 0 ]]; then
+                    error "Error!\nError occurred while moving the updated file ${src_file}."
+                fi
+
+                if [[ ! ${DO_COMMIT:-true} == false ]]; then
+                    # Stage updated files for commit
+                    src_gitAdd="$(cmd_execute "git add ${src_file}")"
+                    if [[ ! $src_gitAdd -eq 0 ]]; then
+                        error "Error!\nCould not stage file ${src_file} for commit."
+                    fi
+                fi
+            else
+                error "Error!\nError occurred while copying source file to temp directory."
+            fi
+        done
+
+        if [[ ! ${DO_COMMIT:-true} == false ]]; then
+            # shellcheck disable=SC2059
+            printf -v COMMIT_MESSAGE "${COMMIT_MESSAGE:-${DEFAULT_COMMIT_BUMP}}" "${nextVersion}"
+            echo "Committing Change:"
+            echo "  Message:      ${COMMIT_MESSAGE}"
+
+            gitCommit="$(cmd_execute "git commit -m \"${COMMIT_MESSAGE}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
+            if [[ ! $gitCommit -eq 0 ]]; then
+                error "Error!\nCould not commit changes."
+            fi
+        fi
+
+        echo "Complete!"
 
     else
         error "Temporary directory does not exist: ${tempDir}"
