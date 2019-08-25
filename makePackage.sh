@@ -322,7 +322,7 @@ function validate_addon_name() {
 
 function package_execute() {
     local addonName addonVersion releaseDir packageName addonDir\
-        excludeFiles systemExclude addonExclude exclude
+        excludeFiles systemExclude addonExclude exclude packageFile
 
     # Get variables we need
     addonPath=$(get_addon_path) || exit 1
@@ -342,7 +342,8 @@ function package_execute() {
 
     # Convert spaces to underscores in package name
     packageName="${addonName}-${addonVersion/ /_}.zip"
-    packageOutput="${addonDir}/${releaseDir}/${packageName}"
+    packageFile="${releaseDir}/${packageName}"
+    packageOutput="${addonDir}/${packageFile}"
 
     # Files to exclude
     excludeAll=""
@@ -371,22 +372,36 @@ function package_execute() {
     # Create package command
     packageCmd="zip -DqrX ${packageOutput} ${addonDir} -x ${excludeAll}"
 
-    # Execute or print command when performing a dry run
-    if [[ ${DO_DRY_RUN:-false} == true ]]; then
-        echo "Dry Run Creating: ${packageName}"
-        echo "$packageCmd"
-        # TODO: Dry run commit command
-    else
-        echo -n "Creating: ${packageName}..."
-        cd ..
-        package="$(eval "${packageCmd}")"
-        if [[ $package -eq 0 ]]; then
-            echo "Done!"
-            cd "$addonPath"
-            # TODO: Commit package
-        else
-            error "Error!\nError occurred while creating the package."
+    echo "Creating package:"
+    echo "  Name: ${packageName}"
+    echo "  Into: ${releaseDir}"
+
+    cd ..
+    package="$(cmd_execute "${packageCmd}")"
+    if [[ $package -eq 0 ]]; then
+        cd "$addonPath"
+        if [[ ! ${DO_COMMIT:-true} == false ]]; then
+            # Stage package for commit
+            gitAdd="$(cmd_execute "git add ${packageFile}")"
+            if [[ $gitAdd -eq 0 ]]; then
+                # shellcheck disable=SC2059
+                printf -v COMMIT_MESSAGE "${COMMIT_MESSAGE:-${DEFAULT_COMMIT}}" "${addonVersion}"
+                echo "Committing Package:"
+                echo "  Message:      ${COMMIT_MESSAGE}"
+
+                gitCommit="$(cmd_execute "git commit -m \"${COMMIT_MESSAGE}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
+                if [[ ! $gitCommit -eq 0 ]]; then
+                    error "Error!\nCould not commit package."
+                fi
+            else
+                error "Error!\nCould not stage package ${packageName} for commit."
+            fi
+
         fi
+
+        echo "Complete!"
+    else
+        error "Error!\nError occurred while creating the package."
     fi
 
 }
