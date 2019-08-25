@@ -28,6 +28,12 @@ For more configuration information, issues, or feature requests, visit:
 
 ## Options
 
+* `--verbose`
+
+    Include additional detail about each action performed in program output.
+
+    Short option: `-p`
+
 * `--dry-run`
 
     Print out commands to execute without executing them.
@@ -114,6 +120,19 @@ with a semi-colon (`;`) to avoid conflict or unforseen incompatibilities.
 * `PackageBumpFiles`
 
     A space-separated list of files to parse when bumping the addon version number.
+
+    Version replacement in these files will _only_ act on versions that are directly in quotes, single or double, to avoid falsely matching versions in comments or other areas.
+
+    ```Lua
+    myAddonVersion = '1.2.3'                -- Matches
+
+    myAddonVersion = "1.2.3"                -- Also matches
+
+    myAddonVersion = 1.2.3                  -- Doesn't match, Lua wouldn't like it either
+
+    -- Fixed in version 1.2.3               -- Doesn't match
+    local function myFunction() return end
+    ```
 
 ### Configuration Example
 

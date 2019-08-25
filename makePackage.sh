@@ -51,6 +51,10 @@ For more configuration information, issues, or feature requests, visit:
 
 Options:
 
+  --verbose             Include additional detail about each action
+                        performed in program output.
+                        Short: -p
+
   --dry-run             Print out commands to execute without executing them.
                         Short: -d
 
