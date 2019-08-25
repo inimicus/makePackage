@@ -154,6 +154,10 @@ function get_manifest_addon_version() {
     get_manifest_variable "AddOnVersion"
 }
 
+function get_manifest_api_version() {
+    get_manifest_variable "APIVersion"
+}
+
 function get_manifest_version() {
     get_manifest_variable "Version"
 }
@@ -253,6 +257,29 @@ function generate_next_add_on_version() {
 
     else
         error "Version reference to generate AddOnVersion $version is not a compatible version format (X.Y.Z or X.Y rZ)"
+    fi
+}
+
+function generate_next_api_version() {
+    local currentApi nextApi highestApi
+
+    if [[ -z ${ADDON_NEXT_VERSION+x} ]]; then
+        read -r -a currentApi <<< "${1}"
+
+        for version in "${currentApi[@]}"
+        do
+            version=$((version + 1))
+            nextApi+=("${version}")
+            ((version > highestApi)) && highestApi=$version
+        done
+
+        if [[ ${DO_SQUASH:-false} == true  ]]; then
+            echo "${highestApi}"
+        else
+            echo "${nextApi[@]}"
+        fi
+    else
+        echo "${ADDON_NEXT_VERSION}"
     fi
 }
 
@@ -530,9 +557,67 @@ function bump_execute() {
     fi
 }
 
-function bump_api_execute() {
-    echo "Bumping API Version"
-    # TODO: Implement this
+function execute_bump_api() {
+    local currentApi nextApi\
+        tempDir manifestPath manifestName\
+        man_copy man_replaceApi man_move\
+        gitAdd
+
+    read -r -a currentApi <<< "$(get_manifest_api_version)" || exit 1
+    read -r -a nextApi <<< "$(generate_next_api_version "${currentApi[*]}")" || exit 1
+
+    echo "Bumping API version:"
+    echo "  APIVersion: ${currentApi[*]} => ${nextApi[*]}"
+
+    tempDir="${TMPDIR-/tmp/}"
+    manifestPath="$(get_manifest_file)" || exit 1
+    manifestName="$(basename -- "${manifestPath}")"
+
+    if [[ -d $tempDir ]]; then
+
+        # Manifest commands
+        tempManifest="${tempDir}${manifestName}"
+
+        echo_verbose "Copying manifest to temp file"
+        man_copy="$(execute_cmd "cp ${manifestPath} ${tempManifest}")"
+
+        # Update Manifest
+        if [[ ${man_copy} -eq 0 ]]; then
+
+            # Handle Version
+            echo_verbose "Bumping manifest APIVersion ${currentApi[*]} => ${nextApi[*]}"
+            man_replaceApi="$(execute_cmd "sed -i -e 's/${currentApi[*]}/${nextApi[*]}/g' ${tempManifest}")"
+            if [[ ! $man_replaceApi -eq 0 ]]; then
+                error "Error!\nError occurred while updating the manifest Version."
+            fi
+
+            # Move updated manifest back
+            echo_verbose "Moving temporary manifest into place"
+            man_move="$(execute_cmd "mv ${tempManifest} ${manifestPath}")"
+            if [[ ! $man_move -eq 0 ]]; then
+                error "Error!\nError occurred while moving the updated manifest file."
+            fi
+
+            if [[ ${DO_COMMIT:-true} == true ]]; then
+
+                # Stage updated files for commit
+                gitAdd="$(execute_cmd "git add ${manifestName}")"
+                if [[ $gitAdd -eq 0 ]]; then
+                    execute_commit "${DEFAULT_COMMIT_BUMP_API}" "${nextApi[*]}" || exit 1
+                else
+                    error "Error!\nCould not stage manifest ${manifestName} for commit."
+                fi
+            fi
+
+            echo "Complete!"
+
+        else
+            error "Error!\nFailed copying manifest file."
+        fi
+    else
+        error "Temporary directory does not exist: ${tempDir}"
+    fi
+
 }
 
 function echo_verbose() {
