@@ -351,9 +351,11 @@ function validate_addon_name() {
 
 # Action Functions ------------------------------------------------------------
 
-function package_execute() {
-    local addonName addonVersion releaseDir packageName addonDir\
-        excludeFiles systemExclude addonExclude exclude packageFile
+function execute_create_package() {
+    local addonPath addonDir addonName addonVersion excludeFiles releaseDir\
+        packageName packageFile packageOutput\
+        excludeAll exclude\
+        packageCmd gitAdd
 
     # Get variables we need
     addonPath=$(get_addon_path) || exit 1
@@ -407,22 +409,14 @@ function package_execute() {
     echo "  Package: ${packageFile}"
 
     cd ..
-    package="$(cmd_execute "${packageCmd}")"
+    package="$(execute_cmd "${packageCmd}")"
     if [[ $package -eq 0 ]]; then
         cd "$addonPath"
         if [[ ! ${DO_COMMIT:-true} == false ]]; then
             # Stage package for commit
-            gitAdd="$(cmd_execute "git add ${packageFile}")"
+            gitAdd="$(execute_cmd "git add ${packageFile}")"
             if [[ $gitAdd -eq 0 ]]; then
-                # shellcheck disable=SC2059
-                printf -v COMMIT_MESSAGE "${COMMIT_MESSAGE:-${DEFAULT_COMMIT}}" "${addonVersion}"
-                echo "Committing Package:"
-                echo "  Message:      ${COMMIT_MESSAGE}"
-
-                gitCommit="$(cmd_execute "git commit -m \"${COMMIT_MESSAGE}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
-                if [[ ! $gitCommit -eq 0 ]]; then
-                    error "Error!\nCould not commit package."
-                fi
+                execute_commit "${DEFAULT_COMMIT}" "${addonVersion}" || exit 1
             else
                 error "Error!\nCould not stage package ${packageName} for commit."
             fi
@@ -436,7 +430,7 @@ function package_execute() {
 
 }
 
-function bump_execute() {
+function execute_bump() {
     local currentVersion nextVersion currentAddOnVersion nextAddOnVersion\
         manifestPath manifestName\
         tempDir tempManifest\
@@ -462,7 +456,7 @@ function bump_execute() {
         tempManifest="${tempDir}${manifestName}"
 
         echo_verbose "Copying manifest to temp file"
-        man_copy="$(cmd_execute "cp ${manifestPath} ${tempManifest}")"
+        man_copy="$(execute_cmd "cp ${manifestPath} ${tempManifest}")"
 
         # Update Manifest
         if [[ ${man_copy} -eq 0 ]]; then
@@ -471,14 +465,14 @@ function bump_execute() {
             if [[ -z ${currentAddOnVersion} ]]; then
                 # Add AddOnVersion if it's empty after ## Version line
                 echo_verbose "Inserting manifest AddOnVersion $nextAddOnVersion"
-                man_insertAddOnVersion="$(cmd_execute "awk '/## Version/ { print; print \"## AddOnVersion: ${nextAddOnVersion}\"; next }1' ${manifestPath} > ${tempManifest}")"
+                man_insertAddOnVersion="$(execute_cmd "awk '/## Version/ { print; print \"## AddOnVersion: ${nextAddOnVersion}\"; next }1' ${manifestPath} > ${tempManifest}")"
                 if [[ ! $man_insertAddOnVersion -eq 0 ]]; then
                     error "Error!\nError occurred while inserting the manifest AddOnVersion."
                 fi
             else
                 # Replace AddOnVersion
                 echo_verbose "Bumping manifest AddOnVersion $currentAddOnVersion => $nextAddOnVersion"
-                man_replaceAddOnVersion="$(cmd_execute "sed -i -e 's/${currentAddOnVersion}/${nextAddOnVersion}/g' ${tempManifest}")"
+                man_replaceAddOnVersion="$(execute_cmd "sed -i -e 's/${currentAddOnVersion}/${nextAddOnVersion}/g' ${tempManifest}")"
                 if [[ ! $man_replaceAddOnVersion -eq 0 ]]; then
                     error "Error!\nError occurred while updating the manifest AddOnVersion."
                 fi
@@ -486,14 +480,14 @@ function bump_execute() {
 
             # Handle Version
             echo_verbose "Bumping manifest Version $currentVersion => $nextVersion"
-            man_replaceVersion="$(cmd_execute "sed -i -e 's/${currentVersion}/${nextVersion}/g' ${tempManifest}")"
+            man_replaceVersion="$(execute_cmd "sed -i -e 's/${currentVersion}/${nextVersion}/g' ${tempManifest}")"
             if [[ ! $man_replaceVersion -eq 0 ]]; then
                 error "Error!\nError occurred while updating the manifest Version."
             fi
 
             # Move updated manifest back
             echo_verbose "Moving temporary manifest into place"
-            man_move="$(cmd_execute "mv ${tempManifest} ${manifestPath}")"
+            man_move="$(execute_cmd "mv ${tempManifest} ${manifestPath}")"
             if [[ ! $man_move -eq 0 ]]; then
                 error "Error!\nError occurred while moving the updated manifest file."
             fi
@@ -508,26 +502,27 @@ function bump_execute() {
         do
             src_tempPath="${tempDir}$(basename -- "${src_file}")"
             echo_verbose "Copying ${src_file} to temp file"
-            src_copy="$(cmd_execute "cp ${src_file} ${src_tempPath}")"
+            src_copy="$(execute_cmd "cp ${src_file} ${src_tempPath}")"
             if [[ $src_copy -eq 0 ]]; then
 
                 # Update version
                 echo_verbose "Updating ${src_file} version number"
-                src_replaceVersion="$(cmd_execute "sed -i -e \"s/\([\\\"\']\)${currentVersion}\([\\\"\']\)/\1${nextVersion}\2/g\" ${src_tempPath}")"
+                # TODO: Verify portability of this regex
+                src_replaceVersion="$(execute_cmd "sed -i -e \"s/\([\\\"\']\)${currentVersion}\([\\\"\']\)/\1${nextVersion}\2/g\" ${src_tempPath}")"
                 if [[ ! $src_replaceVersion -eq 0 ]]; then
                     error "Error!\nError occurred while updating the version in ${src_file}."
                 fi
 
                 # Move updated file back
                 echo_verbose "Moving temporary file back to ${src_file}"
-                src_move="$(cmd_execute "mv ${src_tempPath} ${src_file}")"
+                src_move="$(execute_cmd "mv ${src_tempPath} ${src_file}")"
                 if [[ ! $src_move -eq 0 ]]; then
                     error "Error!\nError occurred while moving the updated file ${src_file}."
                 fi
 
                 if [[ ${DO_COMMIT:-true} == true ]]; then
                     # Stage updated files for commit
-                    src_gitAdd="$(cmd_execute "git add ${src_file}")"
+                    src_gitAdd="$(execute_cmd "git add ${src_file}")"
                     if [[ ! $src_gitAdd -eq 0 ]]; then
                         error "Error!\nCould not stage file ${src_file} for commit."
                     fi
@@ -611,13 +606,26 @@ function execute_bump_api() {
 
 }
 
+function execute_commit() {
+    local gitCommit gitMessage
+    # shellcheck disable=SC2059
+    printf -v gitMessage "${COMMIT_MESSAGE:-${1}}" "${2}"
+    echo "Committing Changes:"
+    echo "  Message: ${gitMessage}"
+
+    gitCommit="$(execute_cmd "git commit -m \"${gitMessage}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
+    if [[ ! $gitCommit -eq 0 ]]; then
+        error "Error!\nCould not commit changes."
+    fi
+}
+
 function echo_verbose() {
     if [[ ${BE_VERBOSE:-false} == true ]]; then
         echo -e "${1}" >&2
     fi
 }
 
-function cmd_execute() {
+function execute_cmd() {
     if [[ ${DO_DRY_RUN:-false} == true ]]; then
         echo 0
         echo -e "Command: ${1}" >&2
@@ -739,11 +747,11 @@ if [[ "$#" -gt 0 ]]; then
     case "$1" in
         bump)
             get_package_options "$@"
-            bump_execute
+            execute_bump
             ;;
         bump-api)
             get_package_options "$@"
-            bump_api_execute
+            execute_bump_api
             ;;
         -v|--version)
             echo "${PROGRAM_NAME} version ${PROGRAM_VERSION}"
@@ -755,12 +763,12 @@ if [[ "$#" -gt 0 ]]; then
             ;;
         *)
             get_package_options "$@"
-            package_execute
+            execute_create_package
             ;;
     esac
 else
     # Run default
-    package_execute
+    execute_create_package
 fi
 
 exit 0
