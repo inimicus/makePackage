@@ -354,7 +354,7 @@ function validate_addon_name() {
 function execute_create_package() {
     local addonPath addonDir addonName addonVersion excludeFiles releaseDir\
         packageName packageFile packageOutput\
-        excludeAll exclude\
+        excludeAll exclude workPath workPathCmd addonPathCmd\
         packageCmd gitAdd
 
     # Get variables we need
@@ -370,6 +370,7 @@ function execute_create_package() {
 
     # Make sure release directory exists
     if [[ ! -d "${releaseDir}" ]]; then
+        # TODO: Maybe make it if it doesn't exist?
         error "Could not make package: Release directory $releaseDir does not exist!"
     fi
 
@@ -408,12 +409,28 @@ function execute_create_package() {
     echo "Creating package:"
     echo "  Package: ${packageFile}"
 
-    cd ..
+    # Move to directory above addon directory to create package
+    workPath="$(dirname "$addonPath")"
+    echo_verbose "Changing working directory to ${workPath}"
+    workPathCmd="$(execute_cmd "cd $(dirname "${addonPath}")")"
+    if [[ ! $workPathCmd -eq 0 ]]; then
+        error "Error!\nCould not change directory to ${workPath}."
+    fi
+
     package="$(execute_cmd "${packageCmd}")"
     if [[ $package -eq 0 ]]; then
+
         cd "$addonPath"
+        # Move back to addon directory
+        echo_verbose "Changing working directory to ${addonPath}"
+        addonPathCmd="$(execute_cmd "cd ${addonPath}")"
+        if [[ ! $addonPathCmd -eq 0 ]]; then
+            error "Error!\nCould not change directory to ${addonPath}."
+        fi
+
         if [[ ! ${DO_COMMIT:-true} == false ]]; then
             # Stage package for commit
+            echo_verbose "Staging package for commit: ${packageFile}"
             gitAdd="$(execute_cmd "git add ${packageFile}")"
             if [[ $gitAdd -eq 0 ]]; then
                 execute_commit "${DEFAULT_COMMIT}" "${addonVersion}" || exit 1
