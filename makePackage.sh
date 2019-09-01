@@ -261,7 +261,7 @@ function generate_next_add_on_version() {
 }
 
 function generate_next_api_version() {
-    local currentApi nextApi highestApi
+    local currentApi nextApi highestApi=0
 
     if [[ -z ${ADDON_NEXT_VERSION+x} ]]; then
         read -r -a currentApi <<< "${1}"
@@ -643,7 +643,7 @@ function execute_cmd() {
 # Options ---------------------------------------------------------------------
 
 function get_package_options() {
-    local OPTIND o command
+    local OPTIND=0 o command
 
     command="package"
 
@@ -731,7 +731,7 @@ function get_package_options() {
                     error_usage "The option to set a version to bump to has no effect in this command mode."
                 fi
 
-                if [[ ! ${!OPTARG:0:1} == "-" ]]; then
+                if [[ ! ${OPTARG:0:1} == "-" ]]; then
                     ADDON_NEXT_VERSION="${OPTARG}";
                 else
                     error_usage "Option -t requires a version."
