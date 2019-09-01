@@ -385,10 +385,12 @@ function execute_create_package() {
 
     read -r -a exclude <<< "$excludeFiles"
 
+    echo_verbose "Preparing excluded files list"
+
     # Prepend excludes with full directory path
     for item in "${systemExclude[@]}" "${addonExclude[@]}" "${exclude[@]}"
     do
-        excludeAll="${excludeAll} ${addonDir}/${item}"
+        excludeAll="${excludeAll} '${addonDir}/${item}'"
     done
 
     # Create package command
