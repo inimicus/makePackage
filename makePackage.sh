@@ -531,6 +531,7 @@ function execute_bump() {
 
                 if [[ ${DO_COMMIT:-true} == true ]]; then
                     # Stage updated files for commit
+                    echo_verbose "Staging file ${src_file} for commit"
                     src_gitAdd="$(execute_cmd "git add ${src_file}")"
                     if [[ ! $src_gitAdd -eq 0 ]]; then
                         error "Error!\nCould not stage file ${src_file} for commit."
@@ -596,6 +597,7 @@ function execute_bump_api() {
             if [[ ${DO_COMMIT:-true} == true ]]; then
 
                 # Stage updated files for commit
+                echo_verbose "Staging manifest ${manifestName} for commit"
                 gitAdd="$(execute_cmd "git add ${manifestName}")"
                 if [[ $gitAdd -eq 0 ]]; then
                     execute_commit "${DEFAULT_COMMIT_BUMP_API}" "${nextApi[*]}" || exit 1
