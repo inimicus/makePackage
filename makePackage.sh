@@ -2,7 +2,7 @@
 # =============================================================================
 # makePackage.sh
 # Author:  g4rr3t
-# Updated: 2019-08-12
+# Updated: 2019-09-01
 #
 # Create a fancy zip package of an addon and maybe do other things too.
 # =============================================================================
@@ -13,7 +13,7 @@ set -o nounset
 # set -o xtrace
 
 PROGRAM_NAME="$(basename -- "$0")"
-PROGRAM_VERSION="1.0.0-beta.1"
+PROGRAM_VERSION="1.0.0-beta.2"
 
 VERSION_PATTERN="^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(\\.| r)(0|[1-9][0-9]*)$"
 
