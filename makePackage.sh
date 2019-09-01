@@ -766,9 +766,12 @@ if [[ "$#" -gt 0 ]]; then
             usage
             exit 0
             ;;
-        *)
+        -*)
             get_package_options "$@"
             execute_create_package
+            ;;
+        *)
+            error_usage "Invalid argument"
             ;;
     esac
 else
