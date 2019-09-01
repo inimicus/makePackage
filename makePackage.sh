@@ -491,6 +491,15 @@ function execute_bump() {
             if [[ ! $man_move -eq 0 ]]; then
                 error "Error!\nError occurred while moving the updated manifest file."
             fi
+
+            # Stage updated manifest
+            if [[ ${DO_COMMIT:-true} == true ]]; then
+                echo_verbose "Staging manifest ${manifestName} for commit"
+                gitAdd="$(execute_cmd "git add ${manifestName}")"
+                if [[ ! $gitAdd -eq 0 ]]; then
+                    error "Error!\nCould not stage manifest ${manifestName} for commit."
+                fi
+            fi
         else
             error "Error!\nFailed copying manifest file."
         fi
