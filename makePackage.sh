@@ -342,7 +342,7 @@ function validate_manifest_file() {
 function execute_create_package() {
     local addonPath addonDir addonName addonVersion excludeFiles releaseDir\
         packageName packageFile packageOutput\
-        excludeAll exclude workPath workPathCmd addonPathCmd\
+        excludeAll exclude workPath\
         packageCmd gitAdd
 
     # Get variables we need
@@ -394,27 +394,20 @@ function execute_create_package() {
     # Create package command
     packageCmd="zip -DqrX ${packageOutput} ${addonDir} -x ${excludeAll}"
 
-    echo "Creating package:"
-    echo "  Package: ${packageFile}"
-
     # Move to directory above addon directory to create package
     workPath="$(dirname "$addonPath")"
     echo_verbose "Changing working directory to ${workPath}"
-    workPathCmd="$(execute_cmd "cd $(dirname "${addonPath}")")"
-    if [[ ! $workPathCmd -eq 0 ]]; then
-        error "Error!\nCould not change directory to ${workPath}."
-    fi
+    cd "${workPath}"
+
+    echo "Creating package:"
+    echo "  Package: ${packageFile}"
 
     package="$(execute_cmd "${packageCmd}")"
     if [[ $package -eq 0 ]]; then
 
-        cd "$addonPath"
         # Move back to addon directory
         echo_verbose "Changing working directory to ${addonPath}"
-        addonPathCmd="$(execute_cmd "cd ${addonPath}")"
-        if [[ ! $addonPathCmd -eq 0 ]]; then
-            error "Error!\nCould not change directory to ${addonPath}."
-        fi
+        cd "${addonPath}"
 
         if [[ ! ${DO_COMMIT:-true} == false ]]; then
             # Stage package for commit
