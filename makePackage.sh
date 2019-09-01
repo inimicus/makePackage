@@ -390,11 +390,11 @@ function execute_create_package() {
     # Prepend excludes with full directory path
     for item in "${systemExclude[@]}" "${addonExclude[@]}" "${exclude[@]}"
     do
-        excludeAll="${excludeAll} '${addonDir}/${item}'"
+        excludeAll+=("'${addonDir}/${item}'")
     done
 
     # Create package command
-    packageCmd="zip -DqrX ${packageOutput} ${addonDir} -x ${excludeAll}"
+    packageCmd="zip -DqrX ${packageOutput} ${addonDir} -x${excludeAll[*]}"
 
     # Move to directory above addon directory to create package
     workPath="$(dirname "$addonPath")"
