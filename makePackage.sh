@@ -472,7 +472,7 @@ function execute_bump() {
             else
                 # Replace AddOnVersion
                 echo_verbose "Bumping manifest AddOnVersion $currentAddOnVersion => $nextAddOnVersion"
-                man_replaceAddOnVersion="$(execute_cmd "sed -i -e 's/${currentAddOnVersion}/${nextAddOnVersion}/g' ${tempManifest}")"
+                man_replaceAddOnVersion="$(execute_cmd "sed -i -e 's/## AddOnVersion: ${currentAddOnVersion//./\\.}/## AddOnVersion: ${nextAddOnVersion//./\\.}/g' ${tempManifest}")"
                 if [[ ! $man_replaceAddOnVersion -eq 0 ]]; then
                     error "Error!\nError occurred while updating the manifest AddOnVersion."
                 fi
@@ -480,7 +480,7 @@ function execute_bump() {
 
             # Handle Version
             echo_verbose "Bumping manifest Version $currentVersion => $nextVersion"
-            man_replaceVersion="$(execute_cmd "sed -i -e 's/${currentVersion}/${nextVersion}/g' ${tempManifest}")"
+            man_replaceVersion="$(execute_cmd "sed -i -e 's/## Version: ${currentVersion//./\\.}/## Version: ${nextVersion//./\\.}/g' ${tempManifest}")"
             if [[ ! $man_replaceVersion -eq 0 ]]; then
                 error "Error!\nError occurred while updating the manifest Version."
             fi
@@ -517,7 +517,7 @@ function execute_bump() {
                 # Update version
                 echo_verbose "Updating ${src_file} version number"
                 # TODO: Verify portability of this regex
-                src_replaceVersion="$(execute_cmd "sed -i -e \"s/\([\\\"\']\)${currentVersion}\([\\\"\']\)/\1${nextVersion}\2/g\" ${src_tempPath}")"
+                src_replaceVersion="$(execute_cmd "sed -i -e \"s/\([\\\"\']\)${currentVersion//./\\\\.}\([\\\"\']\)/\1${nextVersion//./\\\\.}\2/g\" ${src_tempPath}")"
                 if [[ ! $src_replaceVersion -eq 0 ]]; then
                     error "Error!\nError occurred while updating the version in ${src_file}."
                 fi
