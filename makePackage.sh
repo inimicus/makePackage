@@ -630,8 +630,13 @@ function execute_cmd() {
         echo 0
         echo -e "Command: ${1}" >&2
     else
-        cmd="$(eval "$1" &> /dev/null)"
-        echo "${cmd}"
+        cmd="$(eval "$1")"
+        if [[ $? -eq 0 ]]; then
+            echo 0
+        else
+            echo $?
+            echo "${cmd}" >&2
+        fi
     fi
 }
 
