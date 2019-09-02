@@ -123,7 +123,7 @@ Examples:
 # Utility Functions -----------------------------------------------------------
 
 function error() {
-    echo -e "$1" >&2
+    echo -e "Error!\n  $1" >&2
     exit 1
 }
 
@@ -356,7 +356,7 @@ function check_dependencies() {
     fi
 
     if [[ ! $PATH_ZIP ]]; then
-        error "Error!\n  zip not installed.\n  Install zip and try again."
+        error "zip not installed.\n  Install zip and try again."
     fi
 
 }
@@ -448,7 +448,7 @@ function execute_create_package() {
                 if [[ $gitAdd -eq 0 ]]; then
                     execute_commit "${DEFAULT_COMMIT}" "${addonVersion}" || exit 1
                 else
-                    error "Error!\nCould not stage package ${packageName} for commit."
+                    error "Could not stage package ${packageName} for commit."
                 fi
             else
                 echo -e "Warning:\n  Release directory gitignored.\n  Skipping staging/commit."
@@ -457,7 +457,7 @@ function execute_create_package() {
 
         echo "Complete!"
     else
-        error "Error!\nError occurred while creating the package."
+        error "Error occurred while creating the package."
     fi
 
 }
@@ -499,14 +499,14 @@ function execute_bump() {
                 echo_verbose "Inserting manifest AddOnVersion $nextAddOnVersion"
                 man_insertAddOnVersion="$(execute_cmd "awk '/## Version/ { print; print \"## AddOnVersion: ${nextAddOnVersion}\"; next }1' ${manifestPath} > ${tempManifest}")"
                 if [[ ! $man_insertAddOnVersion -eq 0 ]]; then
-                    error "Error!\nError occurred while inserting the manifest AddOnVersion."
+                    error "Error occurred while inserting the manifest AddOnVersion."
                 fi
             else
                 # Replace AddOnVersion
                 echo_verbose "Bumping manifest AddOnVersion $currentAddOnVersion => $nextAddOnVersion"
                 man_replaceAddOnVersion="$(execute_cmd "sed -i -e 's/## AddOnVersion: ${currentAddOnVersion//./\\.}/## AddOnVersion: ${nextAddOnVersion//./\\.}/g' ${tempManifest}")"
                 if [[ ! $man_replaceAddOnVersion -eq 0 ]]; then
-                    error "Error!\nError occurred while updating the manifest AddOnVersion."
+                    error "Error occurred while updating the manifest AddOnVersion."
                 fi
             fi
 
@@ -514,14 +514,14 @@ function execute_bump() {
             echo_verbose "Bumping manifest Version $currentVersion => $nextVersion"
             man_replaceVersion="$(execute_cmd "sed -i -e 's/## Version: ${currentVersion//./\\.}/## Version: ${nextVersion//./\\.}/g' ${tempManifest}")"
             if [[ ! $man_replaceVersion -eq 0 ]]; then
-                error "Error!\nError occurred while updating the manifest Version."
+                error "Error occurred while updating the manifest Version."
             fi
 
             # Move updated manifest back
             echo_verbose "Moving temporary manifest into place"
             man_move="$(execute_cmd "mv ${tempManifest} ${manifestPath}")"
             if [[ ! $man_move -eq 0 ]]; then
-                error "Error!\nError occurred while moving the updated manifest file."
+                error "Error occurred while moving the updated manifest file."
             fi
 
             # Stage updated manifest
@@ -529,11 +529,11 @@ function execute_bump() {
                 echo_verbose "Staging manifest ${manifestName} for commit"
                 gitAdd="$(execute_cmd "${PATH_GIT} add ${manifestName}")"
                 if [[ ! $gitAdd -eq 0 ]]; then
-                    error "Error!\nCould not stage manifest ${manifestName} for commit."
+                    error "Could not stage manifest ${manifestName} for commit."
                 fi
             fi
         else
-            error "Error!\nFailed copying manifest file."
+            error "Failed copying manifest file."
         fi
 
         # Update Source Files
@@ -551,14 +551,14 @@ function execute_bump() {
                 # TODO: Verify portability of this regex
                 src_replaceVersion="$(execute_cmd "sed -i -e \"s/\([\\\"\']\)${currentVersion//./\\\\.}\([\\\"\']\)/\1${nextVersion//./\\\\.}\2/g\" ${src_tempPath}")"
                 if [[ ! $src_replaceVersion -eq 0 ]]; then
-                    error "Error!\nError occurred while updating the version in ${src_file}."
+                    error "Error occurred while updating the version in ${src_file}."
                 fi
 
                 # Move updated file back
                 echo_verbose "Moving temporary file back to ${src_file}"
                 src_move="$(execute_cmd "mv ${src_tempPath} ${src_file}")"
                 if [[ ! $src_move -eq 0 ]]; then
-                    error "Error!\nError occurred while moving the updated file ${src_file}."
+                    error "Error occurred while moving the updated file ${src_file}."
                 fi
 
                 if [[ ${DO_COMMIT:-true} == true ]]; then
@@ -566,11 +566,11 @@ function execute_bump() {
                     echo_verbose "Staging file ${src_file} for commit"
                     src_gitAdd="$(execute_cmd "${PATH_GIT} add ${src_file}")"
                     if [[ ! $src_gitAdd -eq 0 ]]; then
-                        error "Error!\nCould not stage file ${src_file} for commit."
+                        error "Could not stage file ${src_file} for commit."
                     fi
                 fi
             else
-                error "Error!\nError occurred while copying source file to temp directory."
+                error "Error occurred while copying source file to temp directory."
             fi
         done
 
@@ -616,14 +616,14 @@ function execute_bump_api() {
             echo_verbose "Bumping manifest APIVersion ${currentApi[*]} => ${nextApi[*]}"
             man_replaceApi="$(execute_cmd "sed -i -e 's/${currentApi[*]}/${nextApi[*]}/g' ${tempManifest}")"
             if [[ ! $man_replaceApi -eq 0 ]]; then
-                error "Error!\nError occurred while updating the manifest Version."
+                error "Error occurred while updating the manifest Version."
             fi
 
             # Move updated manifest back
             echo_verbose "Moving temporary manifest into place"
             man_move="$(execute_cmd "mv ${tempManifest} ${manifestPath}")"
             if [[ ! $man_move -eq 0 ]]; then
-                error "Error!\nError occurred while moving the updated manifest file."
+                error "Error occurred while moving the updated manifest file."
             fi
 
             if [[ ${DO_COMMIT:-true} == true ]]; then
@@ -634,14 +634,14 @@ function execute_bump_api() {
                 if [[ $gitAdd -eq 0 ]]; then
                     execute_commit "${DEFAULT_COMMIT_BUMP_API}" "${nextApi[*]}" || exit 1
                 else
-                    error "Error!\nCould not stage manifest ${manifestName} for commit."
+                    error "Could not stage manifest ${manifestName} for commit."
                 fi
             fi
 
             echo "Complete!"
 
         else
-            error "Error!\nFailed copying manifest file."
+            error "Failed copying manifest file."
         fi
     else
         error "Temporary directory does not exist: ${tempDir}"
@@ -658,7 +658,7 @@ function execute_commit() {
 
     gitCommit="$(execute_cmd "${PATH_GIT} commit -m \"${gitMessage}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
     if [[ ! $gitCommit -eq 0 ]]; then
-        error "Error!\nCould not commit changes."
+        error "Could not commit changes."
     fi
 }
 
