@@ -819,7 +819,7 @@ if [[ "$#" -gt 0 ]]; then
             execute_create_package
             ;;
         *)
-            error_usage "Invalid argument"
+            error_usage "Invalid command option: $1"
             ;;
     esac
 else
