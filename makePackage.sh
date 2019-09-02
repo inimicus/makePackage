@@ -674,6 +674,7 @@ function execute_cmd() {
         echo -e "Command: ${1}" >&2
     else
         cmd="$(eval "$1")"
+        # shellcheck disable=SC2181
         if [[ $? -eq 0 ]]; then
             echo 0
         else
