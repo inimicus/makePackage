@@ -339,11 +339,33 @@ function validate_manifest_file() {
 
 # Action Functions ------------------------------------------------------------
 
+function check_dependencies() {
+    export PATH_GIT PATH_ZIP
+
+    PATH_GIT="$(command -v git)" || true
+    PATH_ZIP="$(command -v zip)" || true
+
+    if [[ $PATH_GIT ]]; then
+        if [[ ! -d ".git" ]]; then
+            echo -e "Warning:\n  git repo not found\n  Skipping git operations."
+            DO_COMMIT=false
+        fi
+    else
+        echo -e "Warning:\n  git not installed.\n  Skipping git operations."
+        DO_COMMIT=false
+    fi
+
+    if [[ ! $PATH_ZIP ]]; then
+        error "Error!\n  zip not installed.\n  Install zip and try again."
+    fi
+
+}
+
 function execute_create_package() {
     local addonPath addonDir addonName addonVersion excludeFiles releaseDir\
         packageName packageFile packageOutput\
         excludeAll exclude workPath\
-        packageCmd gitAdd
+        packageCmd gitAdd ignored
 
     # Get variables we need
     addonPath=$(get_addon_path) || exit 1
@@ -394,7 +416,7 @@ function execute_create_package() {
     done
 
     # Create package command
-    packageCmd="zip -DqrX ${packageOutput} ${addonDir} -x${excludeAll[*]}"
+    packageCmd="${PATH_ZIP} -DqrX ${packageOutput} ${addonDir} -x${excludeAll[*]}"
 
     # Move to directory above addon directory to create package
     workPath="$(dirname "$addonPath")"
@@ -495,7 +517,7 @@ function execute_bump() {
             # Stage updated manifest
             if [[ ${DO_COMMIT:-true} == true ]]; then
                 echo_verbose "Staging manifest ${manifestName} for commit"
-                gitAdd="$(execute_cmd "git add ${manifestName}")"
+                gitAdd="$(execute_cmd "${PATH_GIT} add ${manifestName}")"
                 if [[ ! $gitAdd -eq 0 ]]; then
                     error "Error!\nCould not stage manifest ${manifestName} for commit."
                 fi
@@ -532,7 +554,7 @@ function execute_bump() {
                 if [[ ${DO_COMMIT:-true} == true ]]; then
                     # Stage updated files for commit
                     echo_verbose "Staging file ${src_file} for commit"
-                    src_gitAdd="$(execute_cmd "git add ${src_file}")"
+                    src_gitAdd="$(execute_cmd "${PATH_GIT} add ${src_file}")"
                     if [[ ! $src_gitAdd -eq 0 ]]; then
                         error "Error!\nCould not stage file ${src_file} for commit."
                     fi
@@ -598,7 +620,7 @@ function execute_bump_api() {
 
                 # Stage updated files for commit
                 echo_verbose "Staging manifest ${manifestName} for commit"
-                gitAdd="$(execute_cmd "git add ${manifestName}")"
+                gitAdd="$(execute_cmd "${PATH_GIT} add ${manifestName}")"
                 if [[ $gitAdd -eq 0 ]]; then
                     execute_commit "${DEFAULT_COMMIT_BUMP_API}" "${nextApi[*]}" || exit 1
                 else
@@ -624,7 +646,7 @@ function execute_commit() {
     echo "Committing Changes:"
     echo "  Message: ${gitMessage}"
 
-    gitCommit="$(execute_cmd "git commit -m \"${gitMessage}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
+    gitCommit="$(execute_cmd "${PATH_GIT} commit -m \"${gitMessage}\" -m \"${DEFAULT_COMMIT_BODY}\"")"
     if [[ ! $gitCommit -eq 0 ]]; then
         error "Error!\nCould not commit changes."
     fi
@@ -758,6 +780,10 @@ function get_package_options() {
     done
     shift $((OPTIND - 1))
 }
+
+# Run -------------------------------------------------------------------------
+
+check_dependencies
 
 if [[ "$#" -gt 0 ]]; then
     case "$1" in
