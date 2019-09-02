@@ -490,9 +490,11 @@ function execute_bump() {
         echo_verbose "Copying manifest to temp file"
         man_copy="$(execute_cmd "cp ${manifestPath} ${tempManifest}")"
 
+        # TODO: Only do this if AddOnVersion or Version have different next values
         # Update Manifest
         if [[ ${man_copy} -eq 0 ]]; then
 
+            # TODO: Only do this if currentAddOnVersion != nextAddOnVersion
             # Handle AddOnVersion
             if [[ -z ${currentAddOnVersion} ]]; then
                 # Add AddOnVersion if it's empty after ## Version line
@@ -510,6 +512,7 @@ function execute_bump() {
                 fi
             fi
 
+            # TODO: Only do this if currentVersion != nextVersion
             # Handle Version
             echo_verbose "Bumping manifest Version $currentVersion => $nextVersion"
             man_replaceVersion="$(execute_cmd "sed -i -e 's/## Version: ${currentVersion//./\\.}/## Version: ${nextVersion//./\\.}/g' ${tempManifest}")"
