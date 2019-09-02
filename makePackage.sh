@@ -433,16 +433,26 @@ function execute_create_package() {
         echo_verbose "Changing working directory to ${addonPath}"
         cd "${addonPath}"
 
-        if [[ ! ${DO_COMMIT:-true} == false ]]; then
-            # Stage package for commit
-            echo_verbose "Staging package for commit: ${packageFile}"
-            gitAdd="$(execute_cmd "git add ${packageFile}")"
-            if [[ $gitAdd -eq 0 ]]; then
-                execute_commit "${DEFAULT_COMMIT}" "${addonVersion}" || exit 1
-            else
-                error "Error!\nCould not stage package ${packageName} for commit."
+        if [[ ${DO_COMMIT:-true} == true ]]; then
+
+            # Check if release directory is ignored
+            if [[ -f "${addonPath}/.gitignore" ]]; then
+                ignored="$(grep -ce "^${releaseDir}\(/\*\?\|$\)" "${addonPath}/.gitignore")" || true
             fi
 
+            # Commit unless release is ignored
+            if [[ $ignored -eq 0 ]]; then
+                # Stage package for commit
+                echo_verbose "Staging package for commit: ${packageFile}"
+                gitAdd="$(execute_cmd "${PATH_GIT} add ${packageFile}")"
+                if [[ $gitAdd -eq 0 ]]; then
+                    execute_commit "${DEFAULT_COMMIT}" "${addonVersion}" || exit 1
+                else
+                    error "Error!\nCould not stage package ${packageName} for commit."
+                fi
+            else
+                echo -e "Warning:\n  Release directory gitignored.\n  Skipping staging/commit."
+            fi
         fi
 
         echo "Complete!"
